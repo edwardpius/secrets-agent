@@ -21,8 +21,10 @@ metadata written here).
   `^[a-z][a-z0-9-]{1,40}$`; JIRA ticket `^[A-Z][A-Z0-9]{1,9}-[0-9]{1,6}$`; 1-10 key names
   `^[A-Za-z_][A-Za-z0-9_]{0,63}$`; AWS name (if syncing) starting with `openbao/`, default
   `openbao/<product>/<service>/<environment>`.
-- **REQ-03** WHEN valid THE SERVER SHALL write the data with `cas=0` (create-only) using
-  the user's token, then write `custom_metadata`: `description`, `team`, `jira_ticket`,
+- **REQ-03** WHEN valid THE SERVER SHALL first write the data with `cas=0` (a true create:
+  the policies grant no `update` on data, so nothing existing can be overwritten) using the
+  user's token, then write `custom_metadata` (an update of the metadata the data write
+  created; SA-003): `description`, `team`, `jira_ticket`,
   `created_by` (email from the verified token), `sync_aws` (`true`/`false`),
   `aws_secret_name`, `value_state` (`generated` / `pending-ui` per key), `schema` (`1`).
 - **REQ-04** WHEN a key's value is `generate` THE SERVER SHALL create it with Python

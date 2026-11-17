@@ -37,3 +37,18 @@ ExternalSecret. A secret is synced only when none of its values is the placehold
 `apps/` secret, so that namespace's RBAC allows only the reconciler. The reconciler must read values to
 know whether one is still the placeholder, so its role reads `apps/data` too; it compares in
 memory and never logs, stores or returns a value.
+
+## SA-003: Data first, then metadata; writers may edit custom metadata in dev/staging (2026-11-17) · Status: accepted
+
+**Context:** Spec 001's policy check. With metadata written first, OpenBao counts the data
+write as an `update` (the path exists), so a create-only policy refused it.
+
+**Decision:** `create_secret` writes the data first (`cas=0`, needing only `create`, so
+nothing existing is overwritten), then the custom metadata. Writers (dev/staging) and admins
+therefore have `update` on `apps/metadata/...`, limited to the `custom_metadata` parameter.
+
+**Consequences:** a writer could change the description, team or ticket of another dev or
+staging secret (not its value; OpenBao's audit log records who). They can already edit
+dev/staging values in the UI (spec 001 REQ-06), so this adds no new power. Verified with
+scoped tokens: create dev/staging 200, prod 403, overwrite 403, read data 403, other
+metadata parameters 403.

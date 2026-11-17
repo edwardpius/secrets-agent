@@ -8,7 +8,7 @@ with the date and the measured result.
 **Success:** each test user's `whoami` shows their own email, groups and OpenBao policies;
 a request without a user token is refused.
 
-- [ ] `apps/` KV v2 mount, `mcp-*` / UI policies for it, ECR repository (openbao-platform) — spec 001
+- [x] `apps/` KV v2 mount, `mcp-*` / UI policies for it, ECR repository (openbao-platform) — spec 001 · 2026-11-17: acceptance 4 passed with scoped tokens (15/15 checks: writers dev/staging only, admins prod, no overwrite, no data reads, readers search only)
 - [ ] MCP server skeleton: per-request JWT verification and `jwt-mcp` login, `whoami` tool — spec 001
 - [ ] kagent agent + RemoteMCPServer with token passthrough, deployed by Argo CD (ai-hub) — spec 001
 

@@ -28,7 +28,7 @@ before any tool writes a secret. Also create the `apps/` mount and its policies,
   they may do under `apps/` (create in dev/staging, create in prod, search), and nothing else.
 - **REQ-05** THE PLATFORM SHALL provide a KV v2 mount `apps/` where, through `jwt-mcp`:
   `openbao-secrets-writers` may create (not update) `apps/data/<p>/<s>/dev|staging` and
-  write custom metadata there; `openbao-admins` may also create in `prod`; writers, readers
+  write custom metadata there (create or update, `custom_metadata` only: SA-003); `openbao-admins` may also create in `prod`; writers, readers
   and admins may list and read metadata under `apps/`; nobody may read secret data through
   `jwt-mcp`.
 - **REQ-06** THE PLATFORM SHALL give the same groups matching rights in the OpenBao UI
