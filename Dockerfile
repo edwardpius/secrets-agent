@@ -22,7 +22,7 @@ RUN apt-get update && apt-get -y upgrade && rm -rf /var/lib/apt/lists/* && \
     groupadd -g 65532 app && useradd -u 65532 -g app -d /home/app -m -s /usr/sbin/nologin app
 COPY --from=build --chown=0:0 /app /app
 ENV PATH=/app/.venv/bin:$PATH PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 \
-    SECRETS_MCP_HOST=0.0.0.0 SECRETS_MCP_PORT=8080 HOME=/home/app
+    MCP_LISTEN_HOST=0.0.0.0 MCP_LISTEN_PORT=8080 HOME=/home/app
 USER 65532:65532
 WORKDIR /home/app
 EXPOSE 8080

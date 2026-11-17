@@ -102,8 +102,8 @@ def build_app(service: Service, host: str):
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="secrets-mcp")
-    p.add_argument("--host", default=os.environ.get("SECRETS_MCP_HOST", "127.0.0.1"))
-    p.add_argument("--port", type=int, default=int(os.environ.get("SECRETS_MCP_PORT", "8080")))
+    p.add_argument("--host", default=os.environ.get("MCP_LISTEN_HOST", "127.0.0.1"))
+    p.add_argument("--port", type=int, default=int(os.environ.get("MCP_LISTEN_PORT", "8080")))
     a = p.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(message)s")
     settings = Settings.from_env()
