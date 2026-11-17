@@ -14,7 +14,7 @@ without giving the agent any Kubernetes or AWS rights.
 ## Requirements
 
 - **REQ-01** THE RECONCILER SHALL, every minute, list `apps/` metadata with its own OpenBao
-  role (`apps-sync`, metadata read/list only) and find entries with `sync_aws = true`.
+  role (`apps-sync`: metadata read/list, data read for REQ-06 only) and find entries with `sync_aws = true`.
 - **REQ-02** FOR each such entry THE RECONCILER SHALL ensure an ESO `ExternalSecret` (reads
   `apps/data/<path>` through a SecretStore whose role may read only paths whose metadata
   says sync) and a `PushSecret` to Secrets Manager under `aws_secret_name`, in namespace
@@ -35,9 +35,10 @@ without giving the agent any Kubernetes or AWS rights.
   - **REQ-05** IF any key's `value_state` is `pending-ui` THEN THE RECONCILER SHALL NOT sync
     it and SHALL set `sync_status = waiting: values not set in OpenBao UI`.
   - **REQ-06** WHEN the placeholder `PENDING-SET-IN-OPENBAO-UI` is gone from every key
-    THE RECONCILER SHALL mark those keys `value_state = set` and start the sync. (The
-    reconciler compares the stored value with the placeholder; ESO's role reads data, the
-    reconciler's own role only checks equality via a hash, never logs or returns values.)
+    THE RECONCILER SHALL mark those keys `value_state = set` and start the sync. To
+    know, the reconciler reads the data (its role `apps-sync` therefore reads `apps/data`
+    like ESO's), compares each value with the placeholder in memory, and never logs,
+    stores or returns a value (GUARD: test scans logs and spans).
 
 ## Acceptance
 

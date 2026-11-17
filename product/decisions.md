@@ -34,6 +34,6 @@ ServiceAccount in namespace `secrets-sync`, and only entries with `sync_aws = tr
 ExternalSecret. A secret is synced only when none of its values is the placeholder.
 
 **Consequences:** anyone able to create ExternalSecrets in `secrets-sync` could read any
-`apps/` secret, so that namespace's RBAC allows only the reconciler. The reconciler needs to
-know whether a value is still the placeholder; it learns that without exposing values (it
-never logs or returns them).
+`apps/` secret, so that namespace's RBAC allows only the reconciler. The reconciler must read values to
+know whether one is still the placeholder, so its role reads `apps/data` too; it compares in
+memory and never logs, stores or returns a value.
