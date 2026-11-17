@@ -70,7 +70,8 @@ class Service:
                 # Validation, exists, permission: messages never carry values (GUARD-02).
                 if span is not None:
                     span.set_attribute("tool.refused", str(e)[:200])
-                log.info("%s refused: %s", name, " | ".join(str(e).split())[:600])
+                log.info("%s refused: %s", name, " | ".join(
+                    line.strip() for line in str(e).splitlines() if line.strip())[:600])
                 return str(e), True
             except OpenBaoError as e:
                 if span is not None:

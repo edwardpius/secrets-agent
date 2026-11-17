@@ -17,7 +17,7 @@ a request without a user token is refused.
 **Success:** writers create in dev/staging but not prod, admins also in prod, readers
 can't create; no value appears in any trace.
 
-- [ ] `create_secret` with metadata and generated or UI-entered values — spec 002
+- [x] `create_secret` with metadata and generated or UI-entered values — spec 002 · 2026-11-17, live in kagent: EVAL-01 developer created dev (product1/api, product2/db) and staging (opgateway/legacy-user), prod refused; EVAL-02 admin created prod (artifactory/api), engineer refused; EVAL-03 existing path refused, nothing changed; EVAL-04 pasted password refused, nothing written; EVAL-05 agent asked for missing fields, then kagent's Approve gated the write (SA-004). The prod/engineer/paste/exists refusals came from the agent before any tool call (audit log: no OpenBao request); the server's own versions (403 with group, REQ-07, GUARD-03) are proven by the 74 unit tests. Two live fixes on the way: no empty metadata values (KV v2 400), admins' `apps/metadata/*` (openbao-platform D-25)
 
 ## Phase 2: Search
 **Goal:** find secrets by key or by meaning, only among those the user may see.
