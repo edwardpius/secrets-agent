@@ -73,6 +73,13 @@ class FakeOpenBao:
         self.metadata: dict[str, dict] = {}                   # apps path -> custom_metadata
         self.bodies: list[str] = []                           # raw write bodies (for scans)
         self.fail_metadata_write = False
+        self.hidden: set[str] = set()                         # paths the user can't read
+        self.data_reads = 0
+
+    def seed(self, rel: str, **cm) -> None:
+        """A secret as create_secret leaves it (values are dummies)."""
+        self.data[rel] = {"K": "dummy-value-not-shown"}
+        self.metadata[rel] = {"schema": "1", "sync_aws": "false", **cm}
 
     def _may_write(self, groups, rel: str) -> bool:
         env = rel.rsplit("/", 1)[-1]
@@ -86,13 +93,28 @@ class FakeOpenBao:
         """apps/ KV v2 as the D-25 policies allow it."""
         path = request.url.path.removeprefix("/v1/apps/")
         kind, _, rel = path.partition("/")
-        if request.method == "GET" and kind == "metadata":
+        if request.method == "GET" and kind == "metadata" and request.url.params.get("list"):
             if not self._may_read_metadata(groups):
+                return httpx.Response(403, json={"errors": ["permission denied"]})
+            prefix = rel                                  # "" or "p/" or "p/s/"
+            keys = set()
+            for full in set(self.data) | set(self.metadata):
+                if full.startswith(prefix):
+                    rest = full[len(prefix):].split("/")
+                    keys.add(rest[0] + ("/" if len(rest) > 1 else ""))
+            if not keys:
+                return httpx.Response(404, json={"errors": []})
+            return httpx.Response(200, json={"data": {"keys": sorted(keys)}})
+        if request.method == "GET" and kind == "data":
+            self.data_reads += 1
+        if request.method == "GET" and kind == "metadata":
+            if not self._may_read_metadata(groups) or rel in self.hidden:
                 return httpx.Response(403, json={"errors": ["permission denied"]})
             if rel not in self.metadata and rel not in self.data:
                 return httpx.Response(404, json={"errors": []})
             return httpx.Response(200, json={"data": {
-                "custom_metadata": self.metadata.get(rel) or None, "current_version": 1}})
+                "custom_metadata": self.metadata.get(rel) or None, "current_version": 1,
+                "created_time": "2026-11-17T22:00:00Z", "updated_time": "2026-11-17T22:00:00Z"}})
         if request.method == "POST" and kind == "data":
             self.bodies.append(request.content.decode())
             body = json.loads(request.content)

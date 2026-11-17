@@ -80,3 +80,12 @@ class Session:
         r = self.client.request("POST", path, self.token, json=body)
         if r.status_code not in (200, 204):
             raise OpenBaoError(r.status_code, _errors(r))
+
+    def list(self, path: str) -> list[str]:
+        """LIST (GET ?list=true) with the user's token: the keys, or [] on 404."""
+        r = self.client.request("GET", path, self.token, params={"list": "true"})
+        if r.status_code == 404:
+            return []
+        if r.status_code != 200:
+            raise OpenBaoError(r.status_code, _errors(r))
+        return list((r.json().get("data") or {}).get("keys") or [])

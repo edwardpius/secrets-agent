@@ -22,7 +22,9 @@ rerankers (open decision in tech-stack).
   overlap with path and metadata and return the top 20 with their metadata; THE AGENT
   SHALL then judge which ones answer the question and say why.
 - **REQ-04** Results SHALL contain path, description, team, JIRA ticket, created by,
-  created time, sync state, AWS name and the OpenBao UI link, and no values.
+  created and updated time, key names with how each was set, keys still pending in the UI,
+  sync state, AWS name and the OpenBao UI link, and no values: the server never requests
+  `apps/data`. Product, service and environment filters prune the listing itself.
 - **REQ-05** IF nothing matches THEN THE AGENT SHALL say so and suggest broader filters, and
   never invent a path.
 

@@ -18,6 +18,7 @@ from .auth import AuthError, Identity, Verifier, bearer
 from .config import Settings
 from .openbao import Client, OpenBaoError, Session
 from .create import ToolError, create_secret, validate
+from .search import _check as search_check, search_secrets
 from .tools import ANNOTATIONS, TOOLS, whoami
 
 log = logging.getLogger("secrets_agent")
@@ -33,10 +34,12 @@ ToolFn = Callable[[Settings, Identity, Session, dict], dict]
 HANDLERS: dict[str, ToolFn] = {
     "whoami": lambda s, who, bao, args: whoami(s, who, bao),
     "create_secret": create_secret,
+    "search_secrets": search_secrets,
 }
 # Checks on the arguments alone, run before the OpenBao login: a bad or credential-carrying
 # request never reaches OpenBao (spec 002 REQ-02, GUARD-03).
-PRECHECKS: dict[str, Callable[[dict], object]] = {"create_secret": validate}
+PRECHECKS: dict[str, Callable[[dict], object]] = {"create_secret": validate,
+                                                  "search_secrets": search_check}
 
 
 class Service:

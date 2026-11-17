@@ -24,13 +24,15 @@ WHOAMI = {
 # overwrites), so it isn't idempotent and isn't destructive.
 ANNOTATIONS = {
     "whoami": {"read_only_hint": True, "open_world_hint": False},
+    "search_secrets": {"read_only_hint": True, "open_world_hint": False},
     "create_secret": {"read_only_hint": False, "destructive_hint": False,
                       "idempotent_hint": False, "open_world_hint": False},
 }
 
 from .create import CREATE_SECRET  # noqa: E402
+from .search import SEARCH_SECRETS  # noqa: E402
 
-TOOLS = [WHOAMI, CREATE_SECRET]
+TOOLS = [WHOAMI, SEARCH_SECRETS, CREATE_SECRET]
 
 
 def whoami(settings: Settings, who: Identity, session: Session) -> dict:
