@@ -87,7 +87,7 @@ class FakeOpenBao:
                                            for g in groups)
 
     def _may_read_metadata(self, groups) -> bool:
-        return any(RIGHTS.get(g, (set(), False))[1] for g in groups)
+        return "apps-sync" in groups or any(RIGHTS.get(g, (set(), False))[1] for g in groups)
 
     def _apps(self, request, groups) -> httpx.Response:
         """apps/ KV v2 as the D-25 policies allow it."""
@@ -107,6 +107,12 @@ class FakeOpenBao:
             return httpx.Response(200, json={"data": {"keys": sorted(keys)}})
         if request.method == "GET" and kind == "data":
             self.data_reads += 1
+            if "apps-sync" not in groups:
+                return httpx.Response(403, json={"errors": ["permission denied"]})
+            if rel not in self.data:
+                return httpx.Response(404, json={"errors": []})
+            return httpx.Response(200, json={"data": {"data": dict(self.data[rel]),
+                                                      "metadata": {"version": 1}}})
         if request.method == "GET" and kind == "metadata":
             if not self._may_read_metadata(groups) or rel in self.hidden:
                 return httpx.Response(403, json={"errors": ["permission denied"]})
@@ -130,7 +136,8 @@ class FakeOpenBao:
             body = json.loads(request.content)
             if self.fail_metadata_write:
                 return httpx.Response(500, json={"errors": ["internal error"]})
-            if set(body) != {"custom_metadata"} or not self._may_write(groups, rel):
+            may = self._may_write(groups, rel) or ("apps-sync" in groups and rel in self.data)
+            if set(body) != {"custom_metadata"} or not may:
                 return httpx.Response(403, json={"errors": ["permission denied"]})
             errs = custom_metadata_errors(body["custom_metadata"])
             if errs:

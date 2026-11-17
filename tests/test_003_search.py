@@ -94,7 +94,7 @@ def test_req04_fields_and_no_values(service, cognito, seeded):
     out, _ = search(service, cognito, product="billing", environment="prod")
     (r,) = out["results"]
     assert set(r) == {"path", "description", "team", "jira_ticket", "created_by",
-                      "created_time", "updated_time", "keys", "sync_aws", "aws_secret_name",
+                      "created_time", "updated_time", "keys", "sync_aws", "aws_secret_name", "sync_status",
                       "values_pending", "ui_link"}
     assert r["sync_aws"] is True and r["aws_secret_name"] == "openbao/billing/api/prod"
     assert r["ui_link"].endswith("/ui/vault/secrets/apps/show/billing/api/prod")

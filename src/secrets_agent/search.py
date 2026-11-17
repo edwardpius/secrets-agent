@@ -107,6 +107,7 @@ def _entry(settings: Settings, rel: str, md: dict) -> dict[str, Any]:
         "keys": keys,                                   # name -> generated:<kind> | pending-ui
         "sync_aws": cm.get("sync_aws") == "true",
         "aws_secret_name": cm.get("aws_secret_name"),
+        "sync_status": cm.get("sync_status"),           # written by secrets-sync (spec 004)
         "values_pending": [k for k, v in keys.items() if v == "pending-ui"],
         "ui_link": f"{ui}/ui/vault/secrets/{settings.apps_mount}/show/{rel}" if ui else None,
     }

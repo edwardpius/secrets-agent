@@ -15,6 +15,7 @@ dependencies = [
 
 [project.scripts]
 secrets-mcp = "secrets_agent.server:main"
+secrets-sync = "secrets_agent.sync:main"
 
 [dependency-groups]
 dev = ["pytest>=8"]
