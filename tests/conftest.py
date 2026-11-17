@@ -53,6 +53,50 @@ class FakeOpenBao:
     def __init__(self) -> None:
         self.calls: list[tuple[str, str, str | None]] = []   # (method, path, token)
         self.tokens: dict[str, tuple[str, ...]] = {}          # bao token -> groups
+        self.data: dict[str, dict] = {}                       # apps path -> latest data
+        self.metadata: dict[str, dict] = {}                   # apps path -> custom_metadata
+        self.bodies: list[str] = []                           # raw write bodies (for scans)
+        self.fail_metadata_write = False
+
+    def _may_write(self, groups, rel: str) -> bool:
+        env = rel.rsplit("/", 1)[-1]
+        return rel.count("/") == 2 and any(env in RIGHTS.get(g, (set(), False))[0]
+                                           for g in groups)
+
+    def _may_read_metadata(self, groups) -> bool:
+        return any(RIGHTS.get(g, (set(), False))[1] for g in groups)
+
+    def _apps(self, request, groups) -> httpx.Response:
+        """apps/ KV v2 as the D-25 policies allow it."""
+        path = request.url.path.removeprefix("/v1/apps/")
+        kind, _, rel = path.partition("/")
+        if request.method == "GET" and kind == "metadata":
+            if not self._may_read_metadata(groups):
+                return httpx.Response(403, json={"errors": ["permission denied"]})
+            if rel not in self.metadata and rel not in self.data:
+                return httpx.Response(404, json={"errors": []})
+            return httpx.Response(200, json={"data": {
+                "custom_metadata": self.metadata.get(rel) or None, "current_version": 1}})
+        if request.method == "POST" and kind == "data":
+            self.bodies.append(request.content.decode())
+            body = json.loads(request.content)
+            # Existing path = an update, which no apps/ MCP policy grants.
+            if rel in self.data or not self._may_write(groups, rel):
+                return httpx.Response(403, json={"errors": ["1 error occurred:\n\t* permission denied\n\n"]})
+            if body.get("options", {}).get("cas") != 0:
+                return httpx.Response(403, json={"errors": ["permission denied"]})
+            self.data[rel] = dict(body["data"])
+            return httpx.Response(200, json={"data": {"version": 1}})
+        if request.method == "POST" and kind == "metadata":
+            self.bodies.append(request.content.decode())
+            body = json.loads(request.content)
+            if self.fail_metadata_write:
+                return httpx.Response(500, json={"errors": ["internal error"]})
+            if set(body) != {"custom_metadata"} or not self._may_write(groups, rel):
+                return httpx.Response(403, json={"errors": ["permission denied"]})
+            self.metadata[rel] = dict(body["custom_metadata"])
+            return httpx.Response(204)
+        return httpx.Response(403, json={"errors": ["permission denied"]})
 
     def handler(self, request: httpx.Request) -> httpx.Response:
         token = request.headers.get("X-Vault-Token")
@@ -84,6 +128,8 @@ class FakeOpenBao:
                         caps.add("list")
                 out[p] = sorted(caps) or ["deny"]
             return httpx.Response(200, json={"data": out})
+        if path.startswith("/v1/apps/"):
+            return self._apps(request, groups)
         return httpx.Response(404, json={"errors": []})
 
 

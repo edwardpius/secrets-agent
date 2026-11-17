@@ -52,3 +52,20 @@ staging secret (not its value; OpenBao's audit log records who). They can alread
 dev/staging values in the UI (spec 001 REQ-06), so this adds no new power. Verified with
 scoped tokens: create dev/staging 200, prod 403, overwrite 403, read data 403, other
 metadata parameters 403.
+
+## SA-004: create_secret's confirmation is kagent's tool approval (2026-11-17) · Status: accepted
+
+**Context:** Spec 002 needs "no write without a confirmation turn". A prompt rule alone can
+be skipped by the model; a server-side "confirm" flag can be set by the model too.
+
+**Decision:** the AgentTemplate binds `secrets-mcp` twice: `whoami` (later search) without
+approval, and `create_secret` with `requireApproval: true`. kagent pauses before each call
+and shows the arguments; nothing is written until the user clicks Approve. The prompt still
+asks the agent to summarise the request first, so the approval card isn't the first time
+the user sees it.
+
+**Consequences:** the confirmation is enforced by the platform, outside the model. It
+depends on kagent's approval feature: a test of the deployed agent (EVAL-05) checks that a
+create waits for approval. Also in spec 002: the per-key field is `source` (no field named
+like a value), each key's state is its own metadata entry (`key.<NAME>`, OpenBao's 512-byte
+limit per value), and validation plus the credential check run before the OpenBao login.

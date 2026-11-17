@@ -20,7 +20,17 @@ WHOAMI = {
     "input_schema": {"type": "object", "properties": {}, "additionalProperties": False},
 }
 
-TOOLS = [WHOAMI]
+# MCP annotations per tool: whoami only reads; create_secret writes (create-only, never
+# overwrites), so it isn't idempotent and isn't destructive.
+ANNOTATIONS = {
+    "whoami": {"read_only_hint": True, "open_world_hint": False},
+    "create_secret": {"read_only_hint": False, "destructive_hint": False,
+                      "idempotent_hint": False, "open_world_hint": False},
+}
+
+from .create import CREATE_SECRET  # noqa: E402
+
+TOOLS = [WHOAMI, CREATE_SECRET]
 
 
 def whoami(settings: Settings, who: Identity, session: Session) -> dict:

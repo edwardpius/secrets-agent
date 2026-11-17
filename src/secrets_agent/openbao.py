@@ -64,3 +64,19 @@ class Session:
         data = r.json()
         data = data.get("data", data)
         return {p: list(data.get(p, [])) for p in paths}
+
+    def read(self, path: str) -> dict | None:
+        """GET with the user's token: the JSON body, or None on 404."""
+        r = self.client.request("GET", path, self.token)
+        if r.status_code == 404:
+            return None
+        if r.status_code != 200:
+            raise OpenBaoError(r.status_code, _errors(r))
+        return r.json()
+
+    def write(self, path: str, body: dict) -> None:
+        """POST with the user's token. The body may hold secret values: it is never logged
+        and errors carry only OpenBao's error strings."""
+        r = self.client.request("POST", path, self.token, json=body)
+        if r.status_code not in (200, 204):
+            raise OpenBaoError(r.status_code, _errors(r))
