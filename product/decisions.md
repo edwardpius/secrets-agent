@@ -23,3 +23,17 @@ D-19 already fixed how it gets rights: the user's Cognito token, exchanged per r
 **Consequences:** OpenBao policies carry all group logic; the agent stays thin. The agent
 must be a kagent declarative agent (Go runtime), since only that runtime forwards the user's
 token to an MCP server. Spec 001 proves this before anything is written.
+
+## SA-002: AWS sync reads all of `apps/`, and waits until every value is set (2026-11-17) · Status: accepted
+
+**Context:** Spec 004. OpenBao policies can't grant reads based on a secret's metadata, and
+secrets created with `ui` values start as placeholders.
+
+**Decision:** ESO's role for the sync may read all of `apps/data`; it is bound only to ESO's
+ServiceAccount in namespace `secrets-sync`, and only entries with `sync_aws = true` get an
+ExternalSecret. A secret is synced only when none of its values is the placeholder.
+
+**Consequences:** anyone able to create ExternalSecrets in `secrets-sync` could read any
+`apps/` secret, so that namespace's RBAC allows only the reconciler. The reconciler needs to
+know whether a value is still the placeholder; it learns that without exposing values (it
+never logs or returns them).

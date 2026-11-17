@@ -25,17 +25,24 @@ without giving the agent any Kubernetes or AWS rights.
 - **REQ-04** THE RECONCILER SHALL write `sync_status` (`pending`, `synced <time>`,
   `error: <reason>`) so `search_secrets` can show it.
 
-## Open points
+## Resolved points (user, 2026-11-17)
 
-- [NEEDS CLARIFICATION: ESO reads data with a role that can read **all** of `apps/data`,
-  since OpenBao policies can't depend on metadata. Accept that (the role is used only by
-  ESO in `secrets-sync`), or have the reconciler copy synced secrets to `kv/sync/apps/...`
-  and reuse layer 60's narrower path?]
-- [NEEDS CLARIFICATION: values still `PENDING-SET-IN-OPENBAO-UI` — sync the placeholder, or
-  wait until every key is set (`value_state` has no `pending-ui`)?]
+- **Read role scope:** ESO's SecretStore in `secrets-sync` uses an OpenBao role that may read
+  **all of `apps/data`** (OpenBao policies can't depend on metadata). Accepted: the role is
+  bound only to ESO's ServiceAccount in `secrets-sync`, and the reconciler creates
+  ExternalSecrets only for entries with `sync_aws = true`. Recorded as SA-002.
+- **Placeholders:** a secret is synced only when **every value is set**:
+  - **REQ-05** IF any key's `value_state` is `pending-ui` THEN THE RECONCILER SHALL NOT sync
+    it and SHALL set `sync_status = waiting: values not set in OpenBao UI`.
+  - **REQ-06** WHEN the placeholder `PENDING-SET-IN-OPENBAO-UI` is gone from every key
+    THE RECONCILER SHALL mark those keys `value_state = set` and start the sync. (The
+    reconciler compares the stored value with the placeholder; ESO's role reads data, the
+    reconciler's own role only checks equality via a hash, never logs or returns values.)
 
 ## Acceptance
 
 - **EVAL-01** create with sync on → AWS secret exists with the same keys within 3 minutes.
 - **EVAL-02** value changed in the UI → AWS copy updated within the ESO refresh interval.
 - **EVAL-03** name outside `openbao/` → skipped, `sync_status` explains.
+- **EVAL-04** created with a `ui` key → not in AWS, `sync_status = waiting…`; after the value
+  is set in the UI → synced within 3 minutes.
