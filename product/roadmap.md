@@ -9,8 +9,8 @@ with the date and the measured result.
 a request without a user token is refused.
 
 - [x] `apps/` KV v2 mount, `mcp-*` / UI policies for it, ECR repository (openbao-platform) — spec 001 · 2026-11-17: acceptance 4 passed with scoped tokens (15/15 checks: writers dev/staging only, admins prod, no overwrite, no data reads, readers search only)
-- [ ] MCP server skeleton: per-request JWT verification and `jwt-mcp` login, `whoami` tool — spec 001
-- [ ] kagent agent + RemoteMCPServer with token passthrough, deployed by Argo CD (ai-hub) — spec 001
+- [x] MCP server skeleton: per-request JWT verification and `jwt-mcp` login, `whoami` tool — spec 001 · 2026-11-17: acceptance 1 passed live (admin → create dev/staging/prod; developer → create dev/staging + search; engineer → neither), acceptance 2 (no token refused before any OpenBao call), acceptance 3 (18 unit tests). Needed policy `mcp-self` (openbao-platform D-25 finding)
+- [x] kagent agent + RemoteMCPServer with token passthrough, deployed by Argo CD (ai-hub) — spec 001 · 2026-11-17: Ready on Agent Substrate; tokenPassthrough forwards each signed-in user's Cognito ID token (FM-01 resolved: works)
 
 ## Phase 1: Create
 **Goal:** create secrets with metadata, limited by Identity Center group.
