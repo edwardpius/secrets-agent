@@ -15,15 +15,19 @@ without giving the agent any Kubernetes or AWS rights.
 
 - **REQ-01** THE RECONCILER SHALL, every minute, list `apps/` metadata with its own OpenBao
   role (`apps-sync`: metadata read/list, data read for REQ-06 only) and find entries with `sync_aws = true`.
-- **REQ-02** FOR each such entry THE RECONCILER SHALL ensure an ESO `ExternalSecret` (reads
-  `apps/data/<path>` through a SecretStore whose role may read only paths whose metadata
-  says sync) and a `PushSecret` to Secrets Manager under `aws_secret_name`, in namespace
-  `secrets-sync`, and remove both when the flag is gone.
-- **REQ-03** IF `aws_secret_name` is outside `openbao/` or already used by another secret
-  THEN THE RECONCILER SHALL skip it and record the reason in the metadata
-  (`sync_status`).
-- **REQ-04** THE RECONCILER SHALL write `sync_status` (`pending`, `synced <time>`,
-  `error: <reason>`) so `search_secrets` can show it.
+- **REQ-02** FOR each such entry THE RECONCILER SHALL server-side apply an ESO
+  `ExternalSecret` (SecretStore `openbao-apps`, role `apps-eso`, which reads all of
+  `apps/data`: SA-002) and a `PushSecret` to Secrets Manager under `aws_secret_name`
+  (SecretStore `aws-secrets-manager`, ESO's role; SecretString JSON; write-protection
+  resource policy; `deletionPolicy: None`), in namespace `secrets-sync`, named
+  `apps-<product>-<service>-<env>-<hash>`, and delete both when the flag is gone (the AWS
+  copy stays).
+- **REQ-03** IF `aws_secret_name` is outside `openbao/`, already used by another `apps/`
+  secret (the first path in sort order keeps it), or a `kv/sync` name (layer 60) THEN THE
+  RECONCILER SHALL skip it and record the reason in the metadata (`sync_status`).
+- **REQ-04** THE RECONCILER SHALL write `sync_status` (`pending`, `synced <time>` from
+  the PushSecret's Ready condition, `waiting: …`, `error: <reason>`) only when it changes,
+  keeping every other metadata field, so `search_secrets` can show it.
 
 ## Resolved points (user, 2026-11-17)
 
@@ -32,10 +36,10 @@ without giving the agent any Kubernetes or AWS rights.
   bound only to ESO's ServiceAccount in `secrets-sync`, and the reconciler creates
   ExternalSecrets only for entries with `sync_aws = true`. Recorded as SA-002.
 - **Placeholders:** a secret is synced only when **every value is set**:
-  - **REQ-05** IF any key's `value_state` is `pending-ui` THEN THE RECONCILER SHALL NOT sync
+  - **REQ-05** IF any key's state (`key.<NAME>`) is `pending-ui` THEN THE RECONCILER SHALL NOT sync
     it and SHALL set `sync_status = waiting: values not set in OpenBao UI`.
   - **REQ-06** WHEN the placeholder `PENDING-SET-IN-OPENBAO-UI` is gone from every key
-    THE RECONCILER SHALL mark those keys `value_state = set` and start the sync. To
+    THE RECONCILER SHALL mark those keys `set` and start the sync. To
     know, the reconciler reads the data (its role `apps-sync` therefore reads `apps/data`
     like ESO's), compares each value with the placeholder in memory, and never logs,
     stores or returns a value (GUARD: test scans logs and spans).
