@@ -20,7 +20,7 @@ metadata written here).
   `create_secret` binding), so no write happens without a confirmation turn even if the
   model skips it.
 - **REQ-02** THE SERVER SHALL validate: product and service `^[a-z][a-z0-9-]{1,30}$`;
-  environment one of `dev`, `staging`, `prod`; description 10-300 characters; team
+  environment one of `dev`, `staging`, `prod`; description one printable line of 10-300 characters (KV v2 refuses unprintable metadata); team
   `^[a-z][a-z0-9-]{1,40}$`; JIRA ticket `^[A-Z][A-Z0-9]{1,9}-[0-9]{1,6}$`; 1-10 key names
   `^[A-Za-z_][A-Za-z0-9_]{0,63}$`, no duplicates; AWS name (if syncing) starting with
   `openbao/`, no `..`, default `openbao/<product>/<service>/<environment>`; no unknown
@@ -31,7 +31,7 @@ metadata written here).
   user's token, then write `custom_metadata` (an update of the metadata the data write
   created; SA-003): `description`, `team`, `jira_ticket`,
   `created_by` (email from the verified token, never an argument), `sync_aws`
-  (`true`/`false`), `aws_secret_name` (empty if not syncing), `schema` (`1`), and one
+  (`true`/`false`), `aws_secret_name` (only when syncing: KV v2 refuses empty metadata values), `schema` (`1`), and one
   `key.<NAME>` entry per key: `generated:<kind>` or `pending-ui` (one entry per key because
   OpenBao caps each metadata value at 512 bytes). If the metadata write fails after the
   data write, the server says the secret exists without metadata and not to create it

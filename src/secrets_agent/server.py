@@ -70,12 +70,12 @@ class Service:
                 # Validation, exists, permission: messages never carry values (GUARD-02).
                 if span is not None:
                     span.set_attribute("tool.refused", str(e)[:200])
-                log.info("%s refused: %s", name, str(e).splitlines()[0][:200])
+                log.info("%s refused: %s", name, " | ".join(str(e).split())[:600])
                 return str(e), True
             except OpenBaoError as e:
                 if span is not None:
                     span.set_attribute("openbao.status", e.status)
-                log.info("OpenBao %s on %s: %s", e.status, name, e.reason)
+                log.info("OpenBao %s on %s: %s", e.status, name, " ".join(e.reason.split()))
                 return f"OpenBao refused ({e.status}): {e.reason}", True
 
 

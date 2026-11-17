@@ -47,6 +47,22 @@ RIGHTS = {
 }
 
 
+def custom_metadata_errors(cm: dict) -> list[str]:
+    """KV v2's validateCustomMetadata (OpenBao, from Vault's KV plugin): at most 64 keys,
+    0 < len(key) <= 128, 0 < len(value) <= 512, both printable."""
+    errs = []
+    if len(cm) > 64:
+        errs.append(f"custom_metadata validation failed: at most 64 keys, provided {len(cm)}")
+    for k, v in cm.items():
+        if not 0 < len(k.encode()) <= 128:
+            errs.append(f"custom_metadata validation failed: length of key {k!r}")
+        if not isinstance(v, str) or not 0 < len(v.encode()) <= 512:
+            errs.append(f"custom_metadata validation failed: length of value for key {k!r}")
+        elif not (k.isprintable() and v.isprintable()):
+            errs.append(f"custom_metadata validation failed: key {k!r} unprintable")
+    return errs
+
+
 class FakeOpenBao:
     """Logs in a JWT by decoding its groups (signature checked by the Verifier under test)."""
 
@@ -94,6 +110,10 @@ class FakeOpenBao:
                 return httpx.Response(500, json={"errors": ["internal error"]})
             if set(body) != {"custom_metadata"} or not self._may_write(groups, rel):
                 return httpx.Response(403, json={"errors": ["permission denied"]})
+            errs = custom_metadata_errors(body["custom_metadata"])
+            if errs:
+                return httpx.Response(400, json={"errors": [
+                    f"{len(errs)} error occurred:\n" + "".join(f"\t* {e}\n" for e in errs)]})
             self.metadata[rel] = dict(body["custom_metadata"])
             return httpx.Response(204)
         return httpx.Response(403, json={"errors": ["permission denied"]})

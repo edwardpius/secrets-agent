@@ -180,6 +180,24 @@ def test_req02_aws_name_default_and_custom(service, cognito, bao):
     out = json.loads(create(service, cognito, service="orders", sync_aws=False)[0])
     assert out["aws_secret_name"] is None
     assert bao.metadata["payments/orders/dev"]["sync_aws"] == "false"
+    assert "aws_secret_name" not in bao.metadata["payments/orders/dev"]   # no empty values
+
+
+def test_req03_metadata_passes_kv_validation_in_every_shape(service, cognito, bao):
+    """Live 2026-11-17: an empty aws_secret_name made OpenBao refuse the metadata (400)."""
+    from conftest import custom_metadata_errors
+    keys = [{"name": f"K{i}_" + "X" * 60, "source": "ui"} for i in range(10)]
+    for i, (sync, env) in enumerate([(True, "dev"), (False, "staging")]):
+        text, err = create(service, cognito, service=f"svc-{i}", environment=env,
+                           sync_aws=sync, keys=keys, description="D" * 300)
+        assert not err, text
+        meta = bao.metadata[f"payments/svc-{i}/{env}"]
+        assert custom_metadata_errors(meta) == [] and all(meta.values())
+
+
+def test_req02_description_must_be_one_printable_line(service, cognito, bao):
+    text, err = create(service, cognito, description="Line one of the text\nline two")
+    assert err and "description" in text and bao.calls == []
 
 
 # ------------------------------------------------------------------ GUARD-01

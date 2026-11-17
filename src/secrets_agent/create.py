@@ -149,8 +149,10 @@ def validate(args: dict) -> dict:
     check("service", isinstance(service, str) and bool(NAME_RE.match(service)),
           "checkout-api (lowercase letters, digits, '-', 2-31 chars)")
     check("environment", env in ENVIRONMENTS, "dev, staging or prod")
-    check("description", isinstance(desc, str) and 10 <= len(desc.strip()) <= 300,
-          "'Database credentials for the checkout API' (10-300 chars)")
+    # One printable line: OpenBao refuses unprintable metadata (newlines, tabs, controls).
+    check("description", isinstance(desc, str) and 10 <= len(desc.strip()) <= 300
+          and desc.strip().isprintable(),
+          "'Database credentials for the checkout API' (one line, 10-300 chars)")
     check("team", isinstance(team, str) and bool(TEAM_RE.match(team)), "platform")
     check("jira_ticket", isinstance(jira, str) and bool(JIRA_RE.match(jira)), "PAY-1234")
 
@@ -261,15 +263,17 @@ def create_secret(settings: Settings, who: Identity, session: Session, args: dic
     finally:
         data.clear()                             # drop the values as soon as they're sent
 
+    # KV v2 refuses empty metadata values (0 < len <= 512): aws_secret_name only when syncing.
     metadata = {
         "description": req["description"],
         "team": req["team"],
         "jira_ticket": req["jira_ticket"],
         "created_by": who.email,
         "sync_aws": "true" if req["sync_aws"] else "false",
-        "aws_secret_name": req["aws_secret_name"],
         "schema": SCHEMA,
     }
+    if req["sync_aws"]:
+        metadata["aws_secret_name"] = req["aws_secret_name"]
     for k in req["keys"]:                         # one entry per key: values are <= 512 bytes
         metadata[f"key.{k['name']}"] = (f"generated:{k['kind']}" if k["source"] == "generate"
                                         else "pending-ui")
