@@ -1,0 +1,276 @@
+# secrets-agent architecture (render: d2 --layout elk docs/architecture.d2 docs/architecture.svg)
+# Numbers on edges follow docs/architecture.md.
+
+vars: {
+  d2-config: {
+    layout-engine: elk
+    pad: 40
+  }
+}
+
+direction: down
+
+classes: {
+  zone: {
+    style: {
+      border-radius: 8
+      stroke-width: 2
+      font-size: 22
+      bold: true
+    }
+  }
+  ns: {
+    style: {
+      border-radius: 6
+      stroke-dash: 3
+      font-size: 18
+      bold: true
+    }
+  }
+  comp: {
+    style: {
+      border-radius: 6
+      font-size: 16
+      fill: "#ffffff"
+      stroke: "#475569"
+    }
+  }
+  ours: {
+    style: {
+      border-radius: 6
+      font-size: 16
+      fill: "#dbeafe"
+      stroke: "#1d4ed8"
+      stroke-width: 2
+      bold: true
+    }
+  }
+  store: {
+    shape: cylinder
+    style: {
+      font-size: 16
+      fill: "#fef3c7"
+      stroke: "#b45309"
+    }
+  }
+  aws: {
+    style: {
+      border-radius: 6
+      font-size: 16
+      fill: "#ffedd5"
+      stroke: "#c2410c"
+    }
+  }
+  # Edge kinds (see legend)
+  req: {
+    style: {
+      stroke: "#1e293b"
+      stroke-width: 2
+      font-size: 14
+    }
+  }
+  ident: {
+    style: {
+      stroke: "#7c3aed"
+      stroke-width: 2
+      stroke-dash: 5
+      font-size: 14
+      font-color: "#6d28d9"
+    }
+  }
+  sync: {
+    style: {
+      stroke: "#c2410c"
+      stroke-width: 2
+      font-size: 14
+      font-color: "#9a3412"
+    }
+  }
+  ops: {
+    style: {
+      stroke: "#64748b"
+      stroke-width: 1
+      stroke-dash: 2
+      font-size: 13
+      font-color: "#475569"
+    }
+  }
+}
+
+title: |md
+  # secrets-agent: create and search OpenBao secrets as the signed-in user
+| {near: top-center}
+
+# ---------------------------------------------------------------- people
+user: "User\n(browser)" {
+  shape: person
+  style.font-size: 18
+}
+
+# ---------------------------------------------------------------- identity
+identity: "Identity (persistent)" {
+  class: zone
+  style.fill: "#f5f3ff"
+  style.stroke: "#7c3aed"
+  idc: "IAM Identity Center\nusers + groups\n(admins, secrets-writers,\nsecrets-readers)" {class: aws}
+  cognito: "Amazon Cognito\nuser pool, kagent client\nID token + cognito:groups" {class: aws}
+  idc -> cognito: "SAML" {class: ident}
+}
+
+# ---------------------------------------------------------------- edge
+edge: "Public edge (*.edwardpius.me)" {
+  class: zone
+  style.fill: "#f8fafc"
+  dns: "Route 53\nExternalDNS records" {class: aws}
+  alb: "ALB (Gateway API)\nTLS: ACM *.edwardpius.me\nsource IP allow-list" {class: aws}
+  dns -> alb {class: req}
+}
+
+# ---------------------------------------------------------------- cluster
+eks: "EKS cluster openbao-nonprod" {
+  class: zone
+  style.fill: "#f1f5f9"
+  style.stroke: "#334155"
+
+  kagent: "namespace kagent" {
+    class: ns
+    style.fill: "#eff6ff"
+    oauth2: "oauth2-proxy\nCognito sign-in\nforwards ID token" {class: comp}
+    signout: "kagent-signout (nginx)\nSign out / Switch user" {class: comp}
+    ui: "kagent UI" {class: comp}
+    ctrl: "kagent controller\nA2A gateway\ntrusted-proxy auth" {class: comp}
+    agent: "secrets-agent\nAgent on Agent Substrate\n(kagent runtime, gVisor)\nsystem prompt + tool rules" {class: ours}
+    rmcp: "RemoteMCPServer secrets-mcp\ntokenPassthrough: true\ncreate_secret: requireApproval" {class: comp}
+    oauth2 -> signout -> ui -> ctrl {class: req}
+    ctrl -> agent: "A2A task" {class: req}
+    agent -> rmcp {class: req}
+  }
+
+  agents: "namespace agents" {
+    class: ns
+    style.fill: "#eff6ff"
+    mcp: "secrets-mcp (MCP server)\nwhoami · search_secrets · create_secret\nverifies ID token per request\nno values in or out" {class: ours}
+  }
+
+  openbao: "namespace openbao" {
+    class: ns
+    style.fill: "#fffbeb"
+    bao: "OpenBao\nauth: jwt-mcp (per-user, 5 min)\noidc (UI) · kubernetes (ESO)" {class: comp}
+    apps: "KV v2 mount apps/\n<product>/<service>/<env>\ndata + custom_metadata" {class: store}
+    bao -> apps {class: req}
+  }
+
+  sync: "namespace secrets-sync" {
+    class: ns
+    style.fill: "#fff7ed"
+    rec: "secrets-sync reconciler\nevery minute\nrole apps-sync" {class: ours}
+    es: "ExternalSecret\n(per synced secret)" {class: comp}
+    ps: "PushSecret\n(per synced secret)" {class: comp}
+    ks: "k8s Secret" {class: comp}
+    es -> ks: "writes" {class: sync}
+    ps -> ks: "reads" {class: sync}
+  }
+
+  eso: "namespace external-secrets" {
+    class: ns
+    style.fill: "#fff7ed"
+    ctl: "External Secrets\nOperator\n(Pod Identity role:\nopenbao/* only)" {class: comp}
+  }
+
+  obs: "namespace observability" {
+    class: ns
+    style.fill: "#f0fdf4"
+    otel: "OTel Collector" {class: comp}
+    phoenix: "Phoenix (Arize)\nproject secrets-agent" {class: comp}
+    otel -> phoenix {class: ops}
+  }
+
+}
+
+# ---------------------------------------------------------------- AWS services
+awssvc: "AWS services" {
+  class: zone
+  style.fill: "#fff7ed"
+  style.stroke: "#c2410c"
+  bedrock: "Amazon Bedrock\nClaude Opus 4.6" {class: aws}
+  sm: "AWS Secrets Manager\nopenbao/<product>/<service>/<env>\nwrite-protected: ESO only" {class: aws}
+}
+
+delivery: "Delivery" {
+  class: zone
+  style.fill: "#f8fafc"
+  style.stroke: "#64748b"
+  direction: right
+  github: "GitHub\nai-hub deploy/ · secrets-agent code" {class: comp; shape: page}
+  ecr: "Amazon ECR\nsecrets-agent image" {class: aws}
+  argocd: "Argo CD (EKS capability)\nsyncs ai-hub main" {class: comp}
+  github -> argocd: "manifests" {class: ops}
+  ecr -> argocd: "pinned digest" {class: ops}
+}
+
+# ---------------------------------------------------------------- flows
+# 1. Sign in
+user -> edge.dns: "[1] https://kagent…" {class: req}
+edge.alb -> eks.kagent.oauth2: "[1]" {class: req}
+eks.kagent.oauth2 -> identity.cognito: "[1] OIDC sign-in" {class: ident}
+
+# 2. Chat
+eks.kagent.agent -> awssvc.bedrock: "[2] model calls" {class: req}
+
+# 3. Tool call with the user's own token
+eks.kagent.rmcp -> eks.agents.mcp: "[3] MCP + user's ID token" {class: ident}
+eks.agents.mcp -> identity.cognito: "[3] JWKS: verify signature" {class: ident}
+eks.agents.mcp -> eks.openbao.bao: "[3] login jwt-mcp → user's\nbatch token; read/write apps/" {class: ident}
+
+# 4. Values set by people in the OpenBao UI
+user -> eks.openbao.bao: "[4] OpenBao UI (OIDC):\nset pending values" {class: req}
+
+# 5. Sync to AWS
+eks.sync.rec -> eks.openbao.bao: "[5] list metadata (sync_aws=true)\nwrite sync_status" {class: sync}
+eks.sync.rec -> eks.sync.es: "[5] apply" {class: sync}
+eks.sync.rec -> eks.sync.ps: "[5] apply" {class: sync}
+eks.eso.ctl -> eks.openbao.bao: "[5] read apps/data\n(role apps-eso)" {class: sync}
+eks.eso.ctl -> awssvc.sm: "[5] PushSecret" {class: sync}
+
+# Telemetry and delivery
+eks.agents.mcp -> eks.obs.otel: "spans (no values)" {class: ops}
+eks.kagent.ctrl -> eks.obs.otel: "spans" {class: ops}
+delivery.argocd -> eks: "deploys secrets-agent + secrets-mcp" {class: ops}
+
+# ---------------------------------------------------------------- legend
+legend: "Legend" {
+  near: bottom-right
+  style.fill: "#ffffff"
+  style.stroke: "#94a3b8"
+  style.font-size: 18
+  direction: down
+
+  boxes: "" {
+    style.stroke-width: 0
+    style.fill: "#ffffff"
+    grid-columns: 2
+    grid-gap: 10
+    k1: "secrets-agent code" {class: ours}
+    k2: "platform component" {class: comp}
+    k3: "AWS service" {class: aws}
+    k4: "data store" {class: store}
+  }
+
+  text: |md
+    **Edges**
+
+    - **solid dark**: request / data
+    - **dashed purple**: identity, the user's own token
+    - **solid orange**: AWS sync (spec 004)
+    - **dotted grey**: deploy, telemetry
+
+    **Flows**
+
+    - **[1]** sign in: Identity Center → Cognito → oauth2-proxy
+    - **[2]** model calls: Amazon Bedrock
+    - **[3]** tool call as the user: ID token → jwt-mcp login → apps/
+    - **[4]** values set by people in the OpenBao UI
+    - **[5]** sync to AWS Secrets Manager
+  | {style.font-size: 16}
+  boxes -> text: "" {style.opacity: 0}
+}

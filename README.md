@@ -8,6 +8,7 @@ user's own short-lived OpenBao token, so OpenBao, not the agent, decides who may
 
 | Start here | |
 |---|---|
+| [docs/architecture.md](docs/architecture.md) | Components, trust boundaries and the five flows (D2 diagram) |
 | [product/mission.md](product/mission.md) | Why it exists, for whom, and what it will never do |
 | [product/roadmap.md](product/roadmap.md) | Phases and progress (the only place status lives) |
 | [product/tech-stack.md](product/tech-stack.md) | Principles, stack, open decisions |
